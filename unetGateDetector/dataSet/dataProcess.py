@@ -8,12 +8,24 @@ import time
 from tqdm import tqdm
 
 """
+该文件用作数据清洗
 数据清洗：
     1、统计数据信息
     2、去除已损坏图片
     3、去除模糊图像 https://www.cnblogs.com/greentomlee/p/9379471.html
     4、去除相似图像
+    
+Parameters
+----------
 
+Returns
+-------
+
+:Author:  JinZ
+:Create:  2024/9/27 16:02
+:github profile:    https://github.com/JzKosann
+:gitlab profile:    https://gitlab.com/JzKosann
+Copyright (c) 2019, JinZ Group All Rights Reserved.
 """
 
 
@@ -180,7 +192,7 @@ class CDataProcess:
     def run(self, dir_path=None):
         self.dir = dir_path  # 文件路径
         print(f"is doing {self.dir}")
-        # self.get_data_info()
-        # self.filter_bad()
-        # self.filter_blurred()
+        self.get_data_info()
+        self.filter_bad()
+        self.filter_blurred()
         self.filter_similar()

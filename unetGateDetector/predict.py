@@ -7,17 +7,19 @@ from model.unet_model import UNet
 
 if __name__ == "__main__":
     # 选择设备，有cuda用cuda，没有就用cpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    torch.cuda.is_available()
+    device = torch.device('cuda')
+    # device = torch.device(cuda)
     # 加载网络，图片单通道，分类为1。
-    net = UNet(n_channels=1, n_classes=1)
+    net = UNet(n_channels=1, n_classes=5)
     # 将网络拷贝到deivce中
     net.to(device=device)
     # 加载模型参数
-    net.load_state_dict(torch.load('best_model.pth', map_location=device))
+    net.load_state_dict(torch.load('best_model.pth', map_location=device,weights_only=True))
     # 测试模式
     net.eval()
     # 读取所有图片路径
-    tests_path = glob.glob('dataSet/from_internet/imgs/test/*.jpg')
+    tests_path = glob.glob('dataSet/img_train/test/*.png')
     # 遍历素有图片
     for test_path in tests_path:
         # 保存结果地址
@@ -34,10 +36,12 @@ if __name__ == "__main__":
         img_tensor = img_tensor.to(device=device, dtype=torch.float32)
         # 预测
         pred = net(img_tensor)
+        print(pred.data)
         # 提取结果
         pred = np.array(pred.data.cpu()[0])[0]
-        # 处理结果
-        pred[pred >= 0.5] = 255
-        pred[pred < 0.5] = 0
+
+        # # 处理结果
+        # pred[pred >= 0.5] = 255
+        # pred[pred < 0.5] = 0
         # 保存图片
         cv2.imwrite(save_res_path, pred)
