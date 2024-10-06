@@ -90,7 +90,7 @@ def main():
     file.close()
     print("label:", label_name_to_value)
 
-pic = cv2.imread("./labels/img0_20240924_161646.png")
+pic = cv2.imread("./test/img0_20240924_163714_856_res.png")
 def mouse_handler(event, x, y, flags, param):
     global pic
     imgCopy = pic.copy()

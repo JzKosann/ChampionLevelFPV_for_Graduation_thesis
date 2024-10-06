@@ -6,7 +6,7 @@ import glob
 
 from sympy.stats.sampling.sample_numpy import numpy
 from torch.utils.data import Dataset
-import random
+import torchvision.transforms as transforms
 from PIL import Image
 
 
@@ -45,7 +45,8 @@ class MyDataLoader(Dataset):
         image_png = image_matrix.reshape(image_png.height, image_png.width, 1)
 
         label_png = torch.tensor(label_png).float().permute(2, 0, 1)
-        image_png = torch.tensor(image_png).float().permute(2, 0, 1)
+        image_png = transforms.ToTensor()(image_png)
+
 
         return image_png, label_png
 
