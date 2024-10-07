@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from colorama import Fore, Style
 import emoji
+from utils.anima import anima, train_complete_printf
 
 
 def dice_loss(pred, target):
@@ -66,12 +67,13 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
     """
     # ----------------------------#
     # 定义
-    epochs = 5000
+    epochs = 10000
     batch_size = 5
     lr = 0.003
     betas = (0.9, 0.999)
     weight_decay = 0
     accumulate_steps = 1
+    _to_save_pth =False
     # 加载训练集和验证集
     dataset = MyDataLoader(data_path, num_classes=classesnum)
     train_size = int(0.8 * len(dataset))
@@ -87,9 +89,10 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
     optimizer = optim.Adam(net.parameters(), lr=lr, betas=betas,
                            weight_decay=weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',
-                                                     factor=0.8, patience=15, verbose=True)
-    # best_loss统计，初始化为正无穷
-    best_loss = float('inf')
+                                                     factor=0.9, patience=50, verbose=True)
+    # best_val_loss统计，初始化为正无穷 最佳验证集损失
+    best_val_loss = float('inf')
+    best_train_loss = float('inf')
     # 建立可视化
     visual_path = './runs'
     os.makedirs(visual_path, exist_ok=True)
@@ -102,11 +105,12 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
         net.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1  # 从下一个 epoch 继续
-        best_loss = checkpoint['loss']
+        best_train_loss = checkpoint['train_loss']
+        best_val_loss = checkpoint['val_loss']
         print(f"Loaded checkpoint from {checkpoint_path}, starting from epoch {start_epoch}")
 
     # 训练epochs次
-    for epoch in range(start_epoch, epochs):
+    for epoch in range(epochs):
         # 训练模式
         net.train()
         train_loss = 0.0
@@ -128,14 +132,18 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
                 optimizer.zero_grad()
             train_loss += loss.item()
             progress_bar.set_postfix({
-                f"{Fore.GREEN}Loss": f"{loss.item():.4f}{Style.RESET_ALL}",
-                f"{Fore.YELLOW}Best Loss": f"{best_loss:.4f}{Style.RESET_ALL}",
+                f"{Fore.GREEN}live_Loss": f"{loss.item():.4f}{Style.RESET_ALL}",
+                f"{Fore.YELLOW}Best Train Loss": f"{best_train_loss:.4f}{Style.RESET_ALL}",
+                f"{Fore.RED}Best Val Loss": f"{best_val_loss:.4f}{Style.RESET_ALL}",
                 f"{Fore.BLUE}LR": f"{optimizer.param_groups[0]['lr']:.10f}{Style.RESET_ALL}",
                 "Step": f"{batch_idx + 1}/{len(train_loader)}",
-                "Status": emoji.emojize('🚀' if loss.item() < best_loss else '⌛')
+                f"{Fore.LIGHTCYAN_EX}Status": f"{emoji.emojize('🚀' if loss.item() < best_train_loss else '⌛')}{Style.RESET_ALL}"
             })
             # 保存loss值最小的网络参数
         avg_train_loss = train_loss / len(train_loader)
+        if avg_train_loss < best_train_loss:
+            best_train_loss = avg_train_loss
+            _to_save_pth = True
         # 评估模式（不计算梯度）
         net.eval()
         val_loss = 0.0
@@ -150,14 +158,19 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
 
         avg_val_loss = val_loss / len(val_loader)
 
-        if avg_val_loss < best_loss:
-            best_loss = avg_val_loss
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            _to_save_pth = True
+
+        if _to_save_pth:
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': net.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'loss': best_loss,
+                'train_loss': best_train_loss,
+                'val_loss': best_val_loss,
             }, 'best_model.pth')
+            _to_save_pth = False
 
         # 每个 epoch 结束后记录到 TensorBoard
         writer.add_scalar('Loss/train', avg_train_loss, epoch)
@@ -165,6 +178,11 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
         writer.add_scalar('Learning Rate', optimizer.param_groups[0]['lr'], epoch)
         scheduler.step(avg_val_loss)
     writer.close()
+    ending_anima = True
+    if ending_anima:
+        anima()
+        train_complete_printf()
+
 
 
 if __name__ == "__main__":
@@ -176,5 +194,6 @@ if __name__ == "__main__":
     net.to(device=device)
     # 指定训练集地址，开始训练
     data_path = "dataSet/"
-    # train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
-    train_net(net, device, data_path, classesnum=5)
+    train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
+    # train_net(net, device, data_path, classesnum=5)
+
