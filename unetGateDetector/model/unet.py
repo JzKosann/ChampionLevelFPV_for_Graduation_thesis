@@ -29,8 +29,16 @@ class Unet(object):
         self.net = UNet(n_channels=1, n_classes=self.num_classes)
         # choose device = 'cuda'
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        # load model 'best_model.pth'
-        self.net.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
+        # 加载模型权重
+        checkpoint = torch.load(self.model_path, map_location=self.device)
+        if 'model_state_dict' in checkpoint:
+            # 如果 checkpoint 包含训练状态，提取模型参数
+            self.net.load_state_dict(checkpoint['model_state_dict'], strict=False)
+        else:
+            # 否则直接加载整个 state_dict
+            self.net.load_state_dict(checkpoint, strict=False)
+
+        # self.net.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
         self.net = self.net.eval()
         print('{} model, and classes loaded.'.format(self.model_path))
         if self.cuda:
