@@ -67,13 +67,13 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
     """
     # ----------------------------#
     # 定义
-    epochs = 10000
+    epochs = 500
     batch_size = 5
     lr = 0.003
     betas = (0.9, 0.999)
     weight_decay = 0
     accumulate_steps = 1
-    _to_save_pth =False
+    _to_save_pth = False
     # 加载训练集和验证集
     dataset = MyDataLoader(data_path, num_classes=classesnum)
     train_size = int(0.8 * len(dataset))
@@ -93,6 +93,7 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
     # best_val_loss统计，初始化为正无穷 最佳验证集损失
     best_val_loss = float('inf')
     best_train_loss = float('inf')
+    best_loss_mux = float('inf')
     # 建立可视化
     visual_path = './runs'
     os.makedirs(visual_path, exist_ok=True)
@@ -143,7 +144,6 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
         avg_train_loss = train_loss / len(train_loader)
         if avg_train_loss < best_train_loss:
             best_train_loss = avg_train_loss
-            _to_save_pth = True
         # 评估模式（不计算梯度）
         net.eval()
         val_loss = 0.0
@@ -160,9 +160,10 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
-            _to_save_pth = True
 
-        if _to_save_pth:
+        best_loss_mux = best_val_loss * best_train_loss
+
+        if (avg_val_loss * avg_train_loss) < best_loss_mux:
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': net.state_dict(),
@@ -184,7 +185,6 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
         train_complete_printf()
 
 
-
 if __name__ == "__main__":
     # 选择设备，有cuda用cuda，没有就用cpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -194,6 +194,5 @@ if __name__ == "__main__":
     net.to(device=device)
     # 指定训练集地址，开始训练
     data_path = "dataSet/"
-    train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
-    # train_net(net, device, data_path, classesnum=5)
-
+    # train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
+    train_net(net, device, data_path, classesnum=5)

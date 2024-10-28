@@ -17,8 +17,9 @@ class MyDataLoader(Dataset):
         self.imgs_path = glob.glob(os.path.join(data_path, 'img_train/imgs/*.png'))
         # self.label_path = glob.glob(os.path.join(data_path, 'masks/train/*.jpg'))
         self.num_classes = num_classes
+        self.flip_flag = -1
 
-    def augment(self, image, flipCode):
+    def get_random_data(self, image, flipCode):
         # 使用cv2.flip进行数据增强，filpCode为1水平翻转，0垂直翻转，-1水平+垂直翻转
         flip = cv2.flip(image, flipCode)
         return flip
@@ -32,11 +33,11 @@ class MyDataLoader(Dataset):
         image_png = Image.open(image_path)
         label_png = Image.open(label_path)
 
-        image_matrix = np.array(image_png)
+        image_matrix = self.get_random_data(np.array(image_png), self.flip_flag)
         """
         这里将label转换为ONE-HOT格式 通道数为类别数
         """
-        label_matrix = np.array(label_png)
+        label_matrix = self.get_random_data(np.array(label_png), self.flip_flag)
         num_classes = self.num_classes
         label_matrix[label_matrix >= num_classes] = num_classes
         seg_labels = np.eye(num_classes, dtype=np.uint8)[label_matrix.reshape(-1)]
@@ -47,7 +48,10 @@ class MyDataLoader(Dataset):
         label_png = torch.tensor(label_png).float().permute(2, 0, 1)
         image_png = transforms.ToTensor()(image_png)
 
-
+        if self.flip_flag <= 1:
+            self.flip_flag += 1
+        else:
+            self.flip_flag = -1
         return image_png, label_png
 
     def __len__(self):

@@ -68,7 +68,7 @@ class Unet(object):
     # --------------------------#
     # 绘制标签颜色
     # 传入image --> 转化为RGB格式 --> 检测标签值 --> 索引颜色并赋值 --> 生成图像
-    # 返回图像
+    # @
     # --------------------------#
     def draw_color(self, image):
         # 用 numpy 矩阵存储输入图像
@@ -82,3 +82,9 @@ class Unet(object):
                 idx = np.nonzero(img_array == label)
                 color_mask[idx[0], idx[1]] = chosen_colors[i]
         return color_mask
+
+    # --------------------------#
+    # 获取最大区域，计算质点
+    # 传入img -> 颜色分离 -> 获取图像最大轮廓 -> 获取图像轮廓中点（四个）
+    # @return : corners
+    # --------------------------#
