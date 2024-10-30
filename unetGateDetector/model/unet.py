@@ -7,6 +7,7 @@ import torchvision.transforms as tf
 from PIL import Image
 import torch.nn.functional as F
 
+
 class Unet(object):
     _defaults = {
         "model_path": "./best_model.pth",
@@ -49,17 +50,25 @@ class Unet(object):
     # 输入img为灰度图像：
     # 传入image
     # --------------------------#
-    def detect(self, image):
+    def detect(self, img1, img2):
         # 输入图像为shape为（height*width）图像
-        image_matrix = np.array(image)
-        image_matrix = image_matrix.reshape(image.height, image.width, 1)
-        img_tensor = (tf.ToTensor()(image_matrix).unsqueeze(0)
-                      .to(device=self.device, dtype=torch.float32))
+        # image_matrix = np.array(img1)
+        # image_matrix = image_matrix.reshape(image.height, image.width, 1)
+        # img_tensor = (tf.ToTensor()(image_matrix).unsqueeze(0)
+        #               .to(device=self.device, dtype=torch.float32))
+        img1_tensor = tf.ToTensor()(img1).unsqueeze(0)
+        img2_tensor = tf.ToTensor()(img2).unsqueeze(0)
+        img_tensor = torch.cat((img1_tensor, img2_tensor), 0).to('cuda')
         pred = self.net(img_tensor).data.cpu()
         pred = F.softmax(pred, dim=1)
-        pred = torch.argmax(pred, dim=1).squeeze().numpy()
-        pred = Image.fromarray(pred.astype('uint8'))
-        pred = self.draw_color(pred)
+        # pred = torch.argmax(pred, dim=1).squeeze().numpy()
+        pred = torch.argmax(pred, dim=1)
+        preds = []
+        for i in range(2):
+            pred_img = pred[i].squeeze().numpy().astype(np.uint8)
+            preds.append(pred_img)
+        # pred = Image.fromarray(pred.astype('uint8'))
+        # pred = self.draw_color(pred)
         # pred.show(title="pred")
         # 用OPENCV来展示视频帧
         # cv2.imshow("pred", pred)
