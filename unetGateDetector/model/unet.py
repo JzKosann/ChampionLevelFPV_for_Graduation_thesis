@@ -72,7 +72,7 @@ class Unet(object):
         # pred.show(title="pred")
         # 用OPENCV来展示视频帧
         # cv2.imshow("pred", pred)
-        return pred
+        return preds
 
     # --------------------------#
     # 绘制标签颜色
