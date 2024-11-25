@@ -25,6 +25,13 @@ import emoji
 from utils.anima import anima, train_complete_printf
 
 
+# 输出为tensorRT可推理的模型
+from torch.autograd import Variable
+import torch.onnx as torch_onnx
+import onnxruntime
+import torch.nn.init as init
+import onnx
+
 def dice_loss(pred, target):
     """
     Dice Loss function to compute similarity between the predicted and ground truth segmentation.
@@ -184,8 +191,7 @@ def train_net(net, device, data_path, classesnum, checkpoint_path=None):
         anima()
         train_complete_printf()
 
-
-if __name__ == "__main__":
+def train():
     # 选择设备，有cuda用cuda，没有就用cpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # 加载网络，图片单通道n_channel，分类为n_classes
@@ -194,5 +200,49 @@ if __name__ == "__main__":
     net.to(device=device)
     # 指定训练集地址，开始训练
     data_path = "dataSet/"
-    # train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
-    train_net(net, device, data_path, classesnum=5)
+    train_net(net, device, data_path, classesnum=5, checkpoint_path='./best_model.pth')
+    # train_net(net, device, data_path, classesnum=5)
+
+def export_to_onnx(checkpoint_path, onnx_save_path):
+    """
+    将训练好的模型导出为 ONNX 格式。
+    :param checkpoint_path: 训练模型权重的路径（如 'best_model.pth'）
+    :param onnx_save_path: 导出的 ONNX 模型保存路径
+    """
+    # 设置设备
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # 初始化模型
+    net = UNet(n_channels=1, n_classes=5)  # 单通道输入，5类分类
+    net.to(device)
+
+    # 加载训练好的权重
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    net.load_state_dict(checkpoint['model_state_dict'])
+    net.eval()  # 设置为评估模式
+
+    # 准备假输入（输入形状：Batch=1, Channel=1, H=512, W=512）
+    dummy_input = torch.randn(2, 1, 480, 640, device=device)
+
+    # 定义动态维度
+    dynamic_axes = {
+        'input': {0: 'batch'},  # 输入的动态批次维度
+        'output': {0: 'batch'}  # 输出的动态批次维度
+    }
+
+    # 导出 ONNX 模型
+    torch.onnx.export(
+        net, dummy_input, onnx_save_path,
+        input_names=['input_img'],  # 输入名
+        output_names=['output_img'],  # 输出名
+        dynamic_axes=dynamic_axes,  # 动态批次支持
+        opset_version=11  # 使用 ONNX opset 版本 11
+    )
+
+    print(f"模型已成功导出为 ONNX 格式，保存路径：{onnx_save_path}")
+
+if __name__ == "__main__":
+    # train()
+    export_to_onnx('./best_model.pth', './UNet_model.onnx')
+    # model = onnx.load('UNet_model')
+    # print(onnx.helper.printable_graph(model.graph))
